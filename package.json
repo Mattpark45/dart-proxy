@@ -1,0 +1,12 @@
+{
+  "name": "dart-proxy",
+  "version": "1.0.0",
+  "description": "DART API proxy for financial-xray-scout",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
