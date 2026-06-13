@@ -1,4 +1,5 @@
 // DART API 프록시 — Node.js (Railway 배포용)
+// 브라우저에서 API 키가 노출되지 않도록 서버에서 키를 주입
 const https = require('https');
 const http  = require('http');
 const url   = require('url');
@@ -6,6 +7,13 @@ const url   = require('url');
 const DART_BASE = 'opendart.fss.or.kr';
 const ALLOWED   = ['company', 'fnlttSinglAcntAll', 'fnlttMultiAcnt'];
 const PORT      = process.env.PORT || 3000;
+
+// ── API 키는 Railway 환경변수에서만 읽음 (브라우저에 절대 노출 안 됨) ──
+const DART_API_KEY = process.env.DART_API_KEY;
+if (!DART_API_KEY) {
+  console.error('[ERROR] DART_API_KEY 환경변수가 설정되지 않았습니다.');
+  process.exit(1);
+}
 
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
@@ -32,8 +40,15 @@ http.createServer((req, res) => {
     return res.end(JSON.stringify({ error: 'not allowed' }));
   }
 
-  const qs      = new URLSearchParams(parsed.query).toString();
-  const dartPath = `/api/${path}.json?${qs}`;
+  // ── 브라우저가 보낸 파라미터에서 corp_code 등만 추출 ──────────
+  // crtfc_key는 브라우저에서 받지 않고 서버에서 주입
+  const clientParams = new URLSearchParams(parsed.query);
+  clientParams.delete('crtfc_key'); // 혹시 브라우저가 보내도 무시
+
+  // 서버에서 키 주입
+  clientParams.set('crtfc_key', DART_API_KEY);
+
+  const dartPath = `/api/${path}.json?${clientParams.toString()}`;
 
   const options = {
     hostname: DART_BASE,
@@ -44,7 +59,6 @@ http.createServer((req, res) => {
       'Referer':    'https://opendart.fss.or.kr/',
       'Accept':     'application/json',
     },
-    // TLS 1.2 강제 (DART 서버 호환)
     minVersion: 'TLSv1.2',
     maxVersion: 'TLSv1.2',
   };
